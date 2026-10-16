@@ -1,160 +1,274 @@
 <template>
-  <Teleport to="body">
-    <Transition name="network-banner-slide">
+  <Teleport :to="teleportTo">
+    <Transition :name="transitionName">
       <aside
-        v-if="isVisible"
+        v-if="effectiveVisible"
         role="alert"
         aria-live="assertive"
         class="network-banner"
         :class="bannerClass"
       >
-        <div class="network-banner__container">
-          <!-- Main Content Area -->
-          <div class="network-banner__content">
-            <!-- Offline Icon -->
-            <svg
-              v-if="isOffline"
-              class="network-banner__icon"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M3 3l18 18M10.584 10.587a6 6 0 00-4.084 1.713M8.535 5.5A12.07 12.07 0 0112 5c3.18 0 6.07 1.24 8.214 3.268m-2.128 2.13A8.006 8.006 0 0012 9c-.83 0-1.63.125-2.383.359M1.42 9a16 16 0 014.773-3.23M12 20h.01"
-              />
-            </svg>
-
-            <!-- Slow Connection Icon -->
-            <svg
-              v-else-if="isSlow"
-              class="network-banner__icon"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
-
-            <!-- Restored Icon -->
-            <svg
-              v-else-if="isRestored"
-              class="network-banner__icon"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2.2"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-
-            <!-- Text & Badge -->
-            <div class="network-banner__text-wrap">
-              <span class="network-banner__title">{{ bannerTitle }}</span>
-              <span class="network-banner__message">{{ bannerMessage }}</span>
-              <span
-                v-if="isSlow && networkSpeedDetails"
-                class="network-banner__badge"
+        <!-- Scoped default slot allows total override if desired -->
+        <slot
+          :status="status"
+          :is-offline="isOffline"
+          :is-slow="isSlow"
+          :is-restored="isRestored"
+          :is-retrying="isRetrying"
+          :network-speed-details="networkSpeedDetails"
+          :title="bannerTitle"
+          :message="bannerMessage"
+          :retry="handleRetry"
+          :dismiss="handleDismiss"
+        >
+          <div class="network-banner__container">
+            <!-- Main Content Area -->
+            <div class="network-banner__content">
+              <!-- Icon Slot -->
+              <slot
+                name="icon"
+                :status="status"
+                :is-offline="isOffline"
+                :is-slow="isSlow"
+                :is-restored="isRestored"
               >
-                {{ networkSpeedDetails }}
-              </span>
+                <!-- Offline Icon -->
+                <svg
+                  v-if="isOffline"
+                  class="network-banner__icon"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3 3l18 18M10.584 10.587a6 6 0 00-4.084 1.713M8.535 5.5A12.07 12.07 0 0112 5c3.18 0 6.07 1.24 8.214 3.268m-2.128 2.13A8.006 8.006 0 0012 9c-.83 0-1.63.125-2.383.359M1.42 9a16 16 0 014.773-3.23M12 20h.01"
+                  />
+                </svg>
+
+                <!-- Slow Connection Icon -->
+                <svg
+                  v-else-if="isSlow"
+                  class="network-banner__icon"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+
+                <!-- Restored Icon -->
+                <svg
+                  v-else-if="isRestored"
+                  class="network-banner__icon"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </slot>
+
+              <!-- Text & Badge -->
+              <div class="network-banner__text-wrap">
+                <slot name="title" :status="status" :title="bannerTitle">
+                  <span class="network-banner__title">{{ bannerTitle }}</span>
+                </slot>
+                <slot name="message" :status="status" :message="bannerMessage">
+                  <span class="network-banner__message">{{ bannerMessage }}</span>
+                </slot>
+                <slot
+                  v-if="showBadge && isSlow && networkSpeedDetails"
+                  name="badge"
+                  :details="networkSpeedDetails"
+                >
+                  <span class="network-banner__badge">
+                    {{ networkSpeedDetails }}
+                  </span>
+                </slot>
+              </div>
+            </div>
+
+            <!-- Actions Area -->
+            <div class="network-banner__actions">
+              <slot
+                name="actions"
+                :is-offline="isOffline"
+                :is-retrying="isRetrying"
+                :retry="handleRetry"
+                :dismiss="handleDismiss"
+              >
+                <!-- Retry Button (Offline State) -->
+                <slot
+                  v-if="showRetry && isOffline"
+                  name="retry-btn"
+                  :is-retrying="isRetrying"
+                  :retry="handleRetry"
+                >
+                  <button
+                    type="button"
+                    class="network-banner__btn-retry"
+                    :disabled="isRetrying"
+                    @click="handleRetry"
+                  >
+                    <svg
+                      v-if="isRetrying"
+                      class="network-banner__spinner"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="3"
+                        class="network-banner__spinner-track"
+                      />
+                      <path
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    <svg
+                      v-else
+                      class="network-banner__btn-icon"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2.2"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    <span>{{ isRetrying ? retryingText : retryText }}</span>
+                  </button>
+                </slot>
+
+                <!-- Dismiss Button (All States) -->
+                <slot
+                  v-if="showDismiss"
+                  name="dismiss-btn"
+                  :dismiss="handleDismiss"
+                >
+                  <button
+                    type="button"
+                    class="network-banner__btn-dismiss"
+                    :aria-label="dismissAriaLabel"
+                    @click="handleDismiss"
+                  >
+                    <svg
+                      class="network-banner__btn-icon"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      aria-hidden="true"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </slot>
+              </slot>
             </div>
           </div>
-
-          <!-- Actions Area -->
-          <div class="network-banner__actions">
-            <!-- Retry Button (Offline State) -->
-            <button
-              v-if="isOffline"
-              type="button"
-              class="network-banner__btn-retry"
-              :disabled="isRetrying"
-              @click="retryConnection"
-            >
-              <svg
-                v-if="isRetrying"
-                class="network-banner__spinner"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  class="network-banner__spinner-track"
-                />
-                <path
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              <svg
-                v-else
-                class="network-banner__btn-icon"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="2.2"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              <span>{{ isRetrying ? 'Checking...' : 'Retry Now' }}</span>
-            </button>
-
-            <!-- Dismiss Button (All States) -->
-            <button
-              type="button"
-              class="network-banner__btn-dismiss"
-              aria-label="Dismiss network alert"
-              @click="dismiss"
-            >
-              <svg
-                class="network-banner__btn-icon"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="2.5"
-                aria-hidden="true"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        </slot>
       </aside>
     </Transition>
   </Teleport>
 </template>
 
 <script>
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, watch, onMounted, onUnmounted } from 'vue'
 import { useNetworkStatus } from '../composables/useNetworkStatus.js'
 
 export default {
   name: 'NetworkStatusBanner',
-  setup() {
+  props: {
+    position: {
+      type: String,
+      default: 'top',
+      validator: (v) => ['top', 'bottom', 'floating-top', 'floating-bottom'].includes(v)
+    },
+    teleportTo: {
+      type: String,
+      default: 'body'
+    },
+    showRetry: {
+      type: Boolean,
+      default: true
+    },
+    showDismiss: {
+      type: Boolean,
+      default: true
+    },
+    showBadge: {
+      type: Boolean,
+      default: true
+    },
+    showSlowWarning: {
+      type: Boolean,
+      default: true
+    },
+    offlineTitle: {
+      type: String,
+      default: 'You are currently offline.'
+    },
+    offlineMessage: {
+      type: String,
+      default: 'Changes may not be saved until reconnected.'
+    },
+    slowTitle: {
+      type: String,
+      default: 'Slow connection detected.'
+    },
+    slowMessage: {
+      type: String,
+      default: 'Syncing and downloads may take longer.'
+    },
+    restoredTitle: {
+      type: String,
+      default: 'Back online!'
+    },
+    restoredMessage: {
+      type: String,
+      default: 'Your internet connection has been restored.'
+    },
+    retryText: {
+      type: String,
+      default: 'Retry Now'
+    },
+    retryingText: {
+      type: String,
+      default: 'Checking...'
+    },
+    dismissAriaLabel: {
+      type: String,
+      default: 'Dismiss network alert'
+    }
+  },
+  emits: ['status-change', 'retry', 'dismiss'],
+  setup(props, { emit }) {
     const {
       status,
       isOffline,
@@ -177,78 +291,172 @@ export default {
       stopListeners()
     })
 
+    watch(status, (current, previous) => {
+      emit('status-change', { current, previous })
+    })
+
+    const effectiveVisible = computed(() => {
+      if (!isVisible.value) return false
+      if (!props.showSlowWarning && isSlow.value) return false
+      return true
+    })
+
+    const isFloating = computed(() => props.position.startsWith('floating'))
+
     const bannerClass = computed(() => {
-      return {
-        'network-banner--offline': isOffline.value,
-        'network-banner--slow': isSlow.value,
-        'network-banner--restored': isRestored.value
-      }
+      return [
+        `network-banner--pos-${props.position}`,
+        {
+          'network-banner--offline': isOffline.value,
+          'network-banner--slow': isSlow.value,
+          'network-banner--restored': isRestored.value,
+          'network-banner--floating': isFloating.value
+        }
+      ]
+    })
+
+    const transitionName = computed(() => {
+      return props.position.includes('bottom')
+        ? 'network-banner-slide-up'
+        : 'network-banner-slide-down'
     })
 
     const bannerTitle = computed(() => {
-      if (isOffline.value) return 'You are currently offline.'
-      if (isSlow.value) return 'Slow connection detected.'
-      if (isRestored.value) return 'Back online!'
+      if (isOffline.value) return props.offlineTitle
+      if (isSlow.value) return props.slowTitle
+      if (isRestored.value) return props.restoredTitle
       return ''
     })
 
     const bannerMessage = computed(() => {
-      if (isOffline.value) return 'Changes may not be saved until reconnected.'
-      if (isSlow.value) return 'Syncing and downloads may take longer.'
-      if (isRestored.value) return 'Your internet connection has been restored.'
+      if (isOffline.value) return props.offlineMessage
+      if (isSlow.value) return props.slowMessage
+      if (isRestored.value) return props.restoredMessage
       return ''
     })
+
+    const handleRetry = async () => {
+      emit('retry')
+      await retryConnection()
+    }
+
+    const handleDismiss = () => {
+      dismiss()
+      emit('dismiss')
+    }
 
     return {
       status,
       isOffline,
       isSlow,
       isRestored,
-      isVisible,
+      effectiveVisible,
       isRetrying,
       networkSpeedDetails,
       bannerClass,
+      transitionName,
       bannerTitle,
       bannerMessage,
-      retryConnection,
-      dismiss
+      handleRetry,
+      handleDismiss
     }
   }
 }
 </script>
 
 <style scoped>
-/* ── Main Banner Layout ── */
+/* ── CSS Custom Properties & Base Banner Layout ── */
 .network-banner {
+  --vns-bg-offline: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
+  --vns-border-offline: rgba(254, 202, 202, 0.35);
+  --vns-bg-slow: linear-gradient(135deg, #d97706 0%, #b45309 50%, #92400e 100%);
+  --vns-border-slow: rgba(253, 230, 138, 0.35);
+  --vns-bg-restored: linear-gradient(135deg, #16a34a 0%, #15803d 50%, #166534 100%);
+  --vns-border-restored: rgba(187, 247, 208, 0.35);
+  --vns-text-color: #ffffff;
+  --vns-z-index: 999999;
+  --vns-font-family: inherit;
+  --vns-offset-top: 0px;
+  --vns-offset-bottom: 0px;
+  --vns-radius: 0px;
+
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 999999;
-  width: 100%;
-  color: #ffffff;
-  padding: 8px 16px;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.28), 0 2px 6px -1px rgba(0, 0, 0, 0.16);
+  z-index: var(--vns-z-index);
+  color: var(--vns-text-color);
+  font-family: var(--vns-font-family);
+  box-sizing: border-box;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  font-family: inherit;
-  box-sizing: border-box;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.28), 0 2px 6px -1px rgba(0, 0, 0, 0.16);
 }
 
-/* ── Status Variant Gradients ── */
+/* ── Positions: Fixed Full-Width ── */
+.network-banner--pos-top {
+  top: var(--vns-offset-top);
+  left: 0;
+  right: 0;
+  width: 100%;
+  padding: 8px 16px;
+  border-radius: var(--vns-radius);
+}
+
+.network-banner--pos-bottom {
+  bottom: var(--vns-offset-bottom);
+  left: 0;
+  right: 0;
+  width: 100%;
+  padding: 8px 16px;
+  border-radius: var(--vns-radius);
+}
+
+/* ── Positions: Floating Toast Pill ── */
+.network-banner--pos-floating-top {
+  top: calc(var(--vns-offset-top) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 680px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+}
+
+.network-banner--pos-floating-bottom {
+  bottom: calc(var(--vns-offset-bottom) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 680px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Status Variant Colors ── */
 .network-banner--offline {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
-  border-bottom: 1px solid rgba(254, 202, 202, 0.35);
+  background: var(--vns-bg-offline);
+  border-bottom: 1px solid var(--vns-border-offline);
 }
 
 .network-banner--slow {
-  background: linear-gradient(135deg, #d97706 0%, #b45309 50%, #92400e 100%);
-  border-bottom: 1px solid rgba(253, 230, 138, 0.35);
+  background: var(--vns-bg-slow);
+  border-bottom: 1px solid var(--vns-border-slow);
 }
 
 .network-banner--restored {
-  background: linear-gradient(135deg, #16a34a 0%, #15803d 50%, #166534 100%);
-  border-bottom: 1px solid rgba(187, 247, 208, 0.35);
+  background: var(--vns-bg-restored);
+  border-bottom: 1px solid var(--vns-border-restored);
+}
+
+/* Floating borders surround entire pill */
+.network-banner--floating.network-banner--offline {
+  border: 1px solid var(--vns-border-offline);
+}
+.network-banner--floating.network-banner--slow {
+  border: 1px solid var(--vns-border-slow);
+}
+.network-banner--floating.network-banner--restored {
+  border: 1px solid var(--vns-border-restored);
 }
 
 /* ── Inner Container ── */
@@ -396,27 +604,76 @@ export default {
   }
 }
 
-/* ── Slide Down / Up Transition ── */
-.network-banner-slide-enter-active,
-.network-banner-slide-leave-active {
+/* ── Slide Down Transitions (Top & Floating-Top) ── */
+.network-banner-slide-down-enter-active,
+.network-banner-slide-down-leave-active {
   transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
 }
 
-.network-banner-slide-enter-from,
-.network-banner-slide-leave-to {
+.network-banner--pos-top.network-banner-slide-down-enter-from,
+.network-banner--pos-top.network-banner-slide-down-leave-to {
   transform: translateY(-100%);
   opacity: 0;
 }
 
-.network-banner-slide-enter-to,
-.network-banner-slide-leave-from {
+.network-banner--pos-top.network-banner-slide-down-enter-to,
+.network-banner--pos-top.network-banner-slide-down-leave-from {
   transform: translateY(0);
+  opacity: 1;
+}
+
+.network-banner--pos-floating-top.network-banner-slide-down-enter-from,
+.network-banner--pos-floating-top.network-banner-slide-down-leave-to {
+  transform: translate(-50%, -120%);
+  opacity: 0;
+}
+
+.network-banner--pos-floating-top.network-banner-slide-down-enter-to,
+.network-banner--pos-floating-top.network-banner-slide-down-leave-from {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}
+
+/* ── Slide Up Transitions (Bottom & Floating-Bottom) ── */
+.network-banner-slide-up-enter-active,
+.network-banner-slide-up-leave-active {
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+.network-banner--pos-bottom.network-banner-slide-up-enter-from,
+.network-banner--pos-bottom.network-banner-slide-up-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.network-banner--pos-bottom.network-banner-slide-up-enter-to,
+.network-banner--pos-bottom.network-banner-slide-up-leave-from {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.network-banner--pos-floating-bottom.network-banner-slide-up-enter-from,
+.network-banner--pos-floating-bottom.network-banner-slide-up-leave-to {
+  transform: translate(-50%, 120%);
+  opacity: 0;
+}
+
+.network-banner--pos-floating-bottom.network-banner-slide-up-enter-to,
+.network-banner--pos-floating-bottom.network-banner-slide-up-leave-from {
+  transform: translate(-50%, 0);
   opacity: 1;
 }
 
 /* ── Mobile Responsive Adjustments ── */
 @media (max-width: 640px) {
-  .network-banner {
+  .network-banner--pos-top,
+  .network-banner--pos-bottom {
+    padding: 8px 12px;
+  }
+
+  .network-banner--pos-floating-top,
+  .network-banner--pos-floating-bottom {
+    width: calc(100% - 20px);
     padding: 8px 12px;
   }
 
