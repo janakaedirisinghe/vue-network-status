@@ -1,0 +1,44 @@
+{
+  "name": "vue-network-status",
+  "version": "1.0.0",
+  "description": "A lightweight, reactive network connectivity and offline monitor banner for Vue 3",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "style": "./dist/style.css",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./dist/style.css": "./dist/style.css",
+    "./style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "vue",
+    "vue3",
+    "network",
+    "offline",
+    "connectivity",
+    "status-banner",
+    "composable"
+  ],
+  "author": "Janaka Edirisinghe",
+  "license": "MIT",
+  "peerDependencies": {
+    "vue": "^3.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.3",
+    "vite": "^5.4.2",
+    "vue": "^3.4.38"
+  }
+}
